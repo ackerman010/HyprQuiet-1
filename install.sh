@@ -11,6 +11,38 @@ set -euo pipefail
 
 echo "Starting Hyprland and dependency installation..."
 
+# Function to import PGP keys robustly
+import_pgp_key_robustly() {
+  local key="$1"
+  local keyservers=(
+    "keyserver.ubuntu.com"
+    "pgp.mit.edu"
+    "keys.openpgp.org"
+    "hkps://keys.openpgp.org" # Secure keyserver
+  )
+  local success=false
+
+  echo "    Attempting to import PGP key: $key"
+  for ks in "${keyservers[@]}"; do
+    echo "      Trying keyserver: $ks"
+    # Redirect stderr to /dev/null for pacman-key to suppress "Problem importing keys"
+    if sudo pacman-key --recv-key "$key" --keyserver "$ks" &>/dev/null; then
+      echo "      Key $key imported successfully from $ks."
+      success=true
+      break
+    else
+      echo "      Failed to import key $key from $ks. Trying next keyserver..."
+    fi
+  done
+
+  if ! $success; then
+    echo "    Warning: Failed to import PGP key $key from all attempts. This might cause issues during package installation."
+    return 1 # Indicate failure
+  fi
+  return 0 # Indicate success
+}
+
+
 # -----------------------------------------------------------------------------
 # 0) Refresh pacman databases only (no full upgrade, so no extra package pulls)
 echo "--> Refreshing pacman databases..."
@@ -23,26 +55,32 @@ echo "--> Setting up Chaotic-AUR repository..."
 # Remove existing chaotic-aur entry from pacman.conf if it exists
 if grep -q "\[chaotic-aur\]" /etc/pacman.conf; then
   echo "    Removing existing Chaotic-AUR entry from /etc/pacman.conf..."
+  # Using sed -i to remove the section, || true to prevent exit if not found (though grep already checked)
   sudo sed -i '/\[chaotic-aur\]/,+1d' /etc/pacman.conf || true
 fi
 
 # Remove chaotic-keyring and chaotic-mirrorlist packages if installed
 echo "    Removing existing chaotic-keyring and chaotic-mirrorlist packages (if any)..."
+# Use &>/dev/null to suppress output and || true to prevent script from exiting if packages are not found
 sudo pacman -Rns --noconfirm chaotic-keyring chaotic-mirrorlist &>/dev/null || true
 
 # Import key, install packages, and add repository entry
 echo "    Importing Chaotic-AUR key and adding repository..."
-sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com && \
-sudo pacman-key --lsign-key 3056513887B78AEB && \
-sudo pacman -U \
-  'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
-  'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' && \
-echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" \
-  | sudo tee -a /etc/pacman.conf
+# Use the robust key import function defined above
+if import_pgp_key_robustly 3056513887B78AEB; then
+  sudo pacman-key --lsign-key 3056513887B78AEB && \
+  sudo pacman -U \
+    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
+    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' && \
+  echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" \
+    | sudo tee -a /etc/pacman.conf
+  # Final sync after adding Chaotic-AUR
+  sudo pacman -Sy
+  echo "--> Chaotic-AUR setup complete and databases synced."
+else
+  echo "--> Warning: Chaotic-AUR key import failed. Chaotic-AUR packages might not be installed."
+fi
 
-# Final sync after adding Chaotic-AUR
-sudo pacman -Sy
-echo "--> Chaotic-AUR setup complete and databases synced."
 
 # -----------------------------------------------------------------------------
 # 1) Define your exact desired list of packages
@@ -85,7 +123,7 @@ pkgs=(
   nwg-look
   loupe
   mpv-full
-  gnome-polkit
+  polkit-gnome # Corrected from gnome-polkit to polkit-gnome
   alsa-utils
   gvfs
   gvfs-smb
