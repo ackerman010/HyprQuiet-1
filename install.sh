@@ -17,17 +17,23 @@ echo "--> Refreshing pacman databases..."
 sudo pacman -Sy --noconfirm
 
 # -----------------------------------------------------------------------------
-# 0.1) Add Chaotic-AUR repository
-echo "--> Adding Chaotic-AUR repository..."
-sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com && \
-sudo pacman-key --lsign-key 3056513887B78AEB && \
-sudo pacman -U \
-  'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
-  'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' && \
-echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" \
-  | sudo tee -a /etc/pacman.conf && \
-sudo pacman -Sy # Resync after adding Chaotic-AUR
-echo "--> Chaotic-AUR added and synced."
+# 0.1) Add Chaotic-AUR repository conditionally
+echo "--> Checking Chaotic-AUR repository status..."
+if grep -q "\[chaotic-aur\]" /etc/pacman.conf && sudo pacman-key --list-keys 3056513887B78AEB &>/dev/null; then
+  echo "    Chaotic-AUR appears to be already added and its key imported. Skipping setup."
+  sudo pacman -Sy # Ensure databases are synced even if already added
+else
+  echo "    Chaotic-AUR not fully set up. Adding repository..."
+  sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com && \
+  sudo pacman-key --lsign-key 3056513887B78AEB && \
+  sudo pacman -U \
+    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
+    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' && \
+  echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" \
+    | sudo tee -a /etc/pacman.conf && \
+  sudo pacman -Sy # Resync after adding Chaotic-AUR
+  echo "--> Chaotic-AUR added and synced."
+fi
 
 # -----------------------------------------------------------------------------
 # 1) Define your exact desired list of packages
@@ -67,29 +73,29 @@ pkgs=(
   nemo-fileroller
   mission-center
   sddm
-  nwg-look # Added
-  loupe # Added
-  mpv-full # Added
-  gnome-polkit # Added
-  alsa-utils # Added
-  gvfs # Added for Nemo
-  gvfs-smb # Added for Nemo
-  gvfs-mtp # Added for Nemo
-  gvfs-goa # Added for Nemo
-  gvfs-afc # Added for Nemo
-  file-roller # Added for Nemo
-  p7zip # Added for Nemo
-  unzip # Added for Nemo
-  zip # Added for Nemo
-  tar # Added for Nemo
-  tumbler # Added for Nemo
-  poppler # Added for Nemo
-  ffmpegthumbnailer # Added for Nemo
-  libgsf # Added for Nemo
-  webp-pixbuf-loader # Added for Nemo
-  gst-libav # Added for Nemo
-  nemo-preview # Added for Nemo
-  gnome-text-editor # Added
+  nwg-look
+  loupe
+  mpv-full
+  gnome-polkit
+  alsa-utils
+  gvfs
+  gvfs-smb
+  gvfs-mtp
+  gvfs-goa
+  gvfs-afc
+  file-roller
+  p7zip
+  unzip
+  zip
+  tar
+  tumbler
+  poppler
+  ffmpegthumbnailer
+  libgsf
+  webp-pixbuf-loader
+  gst-libav
+  nemo-preview
+  gnome-text-editor
 )
 
 echo "--> Analyzing package list: ${pkgs[*]}"
@@ -109,35 +115,42 @@ done
 # -----------------------------------------------------------------------------
 # 3) Install official-repo packages (if any)
 if [ ${#repo_pkgs[@]} -gt 0 ]; then
-  echo "--> Installing from [extra/community/core/chaotic-aur]: ${repo_pkgs[*]}"
-  # Use --overwrite '*' to automatically handle file conflicts
+  echo "--> Installing/updating official repository packages: ${repo_pkgs[*]}"
+  # pacman is smart enough to skip already installed packages.
+  # Use --overwrite '*' to automatically handle file conflicts.
   sudo pacman -S --noconfirm --overwrite '*' "${repo_pkgs[@]}"
 else
-  echo "--> No official repository packages to install."
+  echo "--> No official repository packages to install/update."
 fi
 
 # -----------------------------------------------------------------------------
 # 4) Bootstrap yay (AUR helper) if needed
 if ! command -v yay &>/dev/null; then
   echo "--> yay (AUR helper) not found. Cloning and building yay..."
+  # Clean up /tmp/yay if it exists from a previous failed attempt
+  if [ -d "/tmp/yay" ]; then
+    echo "    Cleaning up existing /tmp/yay directory..."
+    sudo rm -rf /tmp/yay
+  fi
   git clone https://aur.archlinux.org/yay.git /tmp/yay
   pushd /tmp/yay >/dev/null
     makepkg -si --noconfirm
   popd >/dev/null
-  rm -rf /tmp/yay
+  sudo rm -rf /tmp/yay # Clean up after successful installation
   echo "--> yay installed successfully."
 else
-  echo "--> yay (AUR helper) is already installed."
+  echo "--> yay (AUR helper) is already installed. Skipping bootstrap."
 fi
 
 # -----------------------------------------------------------------------------
 # 5) Install AUR packages (if any)
 if [ ${#aur_pkgs[@]} -gt 0 ]; then
-  echo "--> Installing from AUR: ${aur_pkgs[*]}"
-  # Use --overwrite '*' to automatically handle file conflicts
+  echo "--> Installing/updating AUR packages: ${aur_pkgs[*]}"
+  # yay is smart enough to skip already installed packages.
+  # Use --overwrite '*' to automatically handle file conflicts.
   yay -S --noconfirm --overwrite '*' "${aur_pkgs[@]}"
 else
-  echo "--> No AUR packages to install."
+  echo "--> No AUR packages to install/update."
 fi
 
 # -----------------------------------------------------------------------------
@@ -148,13 +161,14 @@ if ! fish -c 'type -q fisher'; then
   fish -c 'curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'
   echo "--> Fisher installed successfully."
 else
-  echo "--> Fisher is already installed."
+  echo "--> Fisher is already installed. Skipping installation."
 fi
 
 # -----------------------------------------------------------------------------
 # 6.1) Install Catppuccin GTK Theme
 echo "--> Installing Catppuccin GTK Theme..."
 CATPPUCCIN_GTK_DIR="/tmp/Catppuccin-GTK-Theme"
+# Always remove temporary directory to ensure a fresh clone and install
 if [ -d "$CATPPUCCIN_GTK_DIR" ]; then
   echo "    Removing existing $CATPPUCCIN_GTK_DIR to ensure clean clone..."
   sudo rm -rf "$CATPPUCCIN_GTK_DIR"
@@ -165,7 +179,7 @@ pushd "$CATPPUCCIN_GTK_DIR/themes" >/dev/null
   sudo chmod +x install.sh
   sudo ./install.sh
 popd >/dev/null
-sudo rm -rf "$CATPPUCCIN_GTK_DIR"
+sudo rm -rf "$CATPPUCCIN_GTK_DIR" # Clean up after installation
 echo "--> Catppuccin GTK Theme installation complete."
 
 # -----------------------------------------------------------------------------
