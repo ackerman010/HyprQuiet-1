@@ -87,7 +87,7 @@ fi
 # Note: 'xdg-dekstop-portal' has been corrected to 'xdg-desktop-portal'
 pkgs=(
   hyprland
-  hyprlock
+  hyprlock # Already in list
   hyprpicker
   hyprshot
   kitty
@@ -123,7 +123,7 @@ pkgs=(
   nwg-look
   loupe
   mpv-full
-  polkit-gnome # Corrected from gnome-polkit to polkit-gnome
+  polkit-gnome
   alsa-utils
   gvfs
   gvfs-smb
@@ -143,6 +143,12 @@ pkgs=(
   gst-libav
   nemo-preview
   gnome-text-editor
+  wlogout # Added wlogout
+  noto-fonts # Added fonts
+  noto-fonts-extra # Added fonts
+  noto-fonts-emoji # Added fonts
+  noto-fonts-cjk # Added fonts
+  nerd-fonts # Added fonts
 )
 
 echo "--> Analyzing package list: ${pkgs[*]}"
@@ -317,6 +323,14 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# 7.2) Apply chmod +x to scripts in ~/.config (including hypr/scripts)
+echo "--> Applying executable permissions to scripts and binaries in $CONFIG_DIR/ (e.g., ~/.config/hypr/scripts/)..."
+# Find files that are likely scripts or executables within the .config directory
+# Applying to all files recursively for broad coverage as requested.
+find "$CONFIG_DIR" -type f -exec chmod +x {} + || true
+echo "    Executable permissions applied to files in $CONFIG_DIR/."
+
+# -----------------------------------------------------------------------------
 # 8) Icon Theme Integration
 echo "--> Starting icon theme integration..."
 
@@ -348,6 +362,13 @@ if [ -d "$ICONS_SOURCE_DIR" ]; then
 else
   echo "    Warning: Source directory $ICONS_SOURCE_DIR does not exist. Skipping icon theme copy."
 fi
+
+# -----------------------------------------------------------------------------
+# 8.3) Apply chmod +x to scripts in ~/.local/share/icons
+echo "--> Applying executable permissions to files in $ICONS_DEST_DIR/..."
+# For simplicity and broad application as requested, applying to all files recursively.
+find "$ICONS_DEST_DIR" -type f -exec chmod +x {} + || true
+echo "    Executable permissions applied to files in $ICONS_DEST_DIR/."
 
 echo "--> Icon theme integration complete."
 
