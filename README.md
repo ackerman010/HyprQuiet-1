@@ -15,7 +15,7 @@ chmod +x install.sh
 # 4. Run the installer
 ./install.sh
 ```
-After installation, you need to make the helper scripts executable. In your terminal:
+After installation, If something from waybar not working then you need to make the helper scripts executable. In your terminal:
 
 ```
 cd $HOME/.config/hypr/scripts
