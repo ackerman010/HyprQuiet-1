@@ -71,11 +71,6 @@ pkgs=(
   loupe # Added
   mpv-full # Added
   gnome-polkit # Added
-  pipewire # Added
-  pipewire-alsa # Added
-  pipewire-pulse # Added
-  jack2 # Added
-  wireplumber # Added
   alsa-utils # Added
   gvfs # Added for Nemo
   gvfs-smb # Added for Nemo
@@ -110,22 +105,6 @@ for pkg in "${pkgs[@]}"; do
     aur_pkgs+=("$pkg")
   fi
 done
-
-# -----------------------------------------------------------------------------
-# 2.1) Handle common package conflicts (e.g., jack2 vs pipewire-jack)
-# This section prompts the user to resolve known conflicts before installation.
-if pacman -Qq jack2 &>/dev/null && [[ " ${pkgs[*]} " =~ " pipewire " ]]; then
-  echo "--> Detected potential conflict: 'jack2' is installed and 'pipewire' (which pulls 'pipewire-jack') is requested."
-  read -rp "    'jack2' and 'pipewire-jack' are conflicting packages. Do you want to remove 'jack2' to proceed with Pipewire? (y/N): " remove_jack2_choice
-  if [[ "$remove_jack2_choice" =~ ^[Yy]$ ]]; then
-    echo "    Removing 'jack2'..."
-    sudo pacman -Rns --noconfirm jack2 || true # Use || true to prevent script from exiting if removal fails
-    echo "    'jack2' removed."
-  else
-    echo "    Skipping 'jack2' removal. Installation of Pipewire components might fail due to this conflict."
-    echo "    You may need to manually resolve this conflict (e.g., 'sudo pacman -Rns jack2') if the installation errors out."
-  fi
-fi
 
 # -----------------------------------------------------------------------------
 # 3) Install official-repo packages (if any)
@@ -173,7 +152,24 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 6.1) Set Default Applications and Enable User Services
+# 6.1) Install Catppuccin GTK Theme
+echo "--> Installing Catppuccin GTK Theme..."
+CATPPUCCIN_GTK_DIR="/tmp/Catppuccin-GTK-Theme"
+if [ -d "$CATPPUCCIN_GTK_DIR" ]; then
+  echo "    Removing existing $CATPPUCCIN_GTK_DIR to ensure clean clone..."
+  sudo rm -rf "$CATPPUCCIN_GTK_DIR"
+fi
+git clone https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git "$CATPPUCCIN_GTK_DIR"
+pushd "$CATPPUCCIN_GTK_DIR/themes" >/dev/null
+  echo "    Running Catppuccin GTK Theme install script..."
+  sudo chmod +x install.sh
+  sudo ./install.sh
+popd >/dev/null
+sudo rm -rf "$CATPPUCCIN_GTK_DIR"
+echo "--> Catppuccin GTK Theme installation complete."
+
+# -----------------------------------------------------------------------------
+# 6.2) Set Default Applications and Enable User Services
 echo "--> Setting default applications and enabling user services..."
 
 # Set Loupe as default for images/gifs
@@ -328,6 +324,7 @@ echo "✔️ Installation complete!"
 echo "    • Attempted to install: ${pkgs[*]}"
 echo "    • Official Repo packages installed/checked: ${repo_pkgs[*]}"
 echo "    • AUR packages installed/checked:          ${aur_pkgs[*]}"
+echo "    • Catppuccin GTK Theme installed."
 echo "    • Your dotfiles from $DOTFILES_REPO have been applied to $HOME/.config"
 echo "      (A backup of your previous ~/.config is available at $BACKUP_CONFIG_DIR)"
 echo "    • Your icon theme from $DOTFILES_REPO has been applied to $HOME/.local/share/icons"
