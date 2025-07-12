@@ -17,34 +17,32 @@ echo "--> Refreshing pacman databases..."
 sudo pacman -Sy --noconfirm
 
 # -----------------------------------------------------------------------------
-# 0.1) Add Chaotic-AUR repository conditionally and robustly
-echo "--> Checking Chaotic-AUR repository status..."
-# Check if the chaotic-aur entry exists in pacman.conf
+# 0.1) Add Chaotic-AUR repository robustly (clean and re-add)
+echo "--> Setting up Chaotic-AUR repository..."
+
+# Remove existing chaotic-aur entry from pacman.conf if it exists
 if grep -q "\[chaotic-aur\]" /etc/pacman.conf; then
-  echo "    Chaotic-AUR entry already exists in /etc/pacman.conf."
-  # Check if the key is already imported and signed
-  if sudo pacman-key --list-keys 3056513887B78AEB &>/dev/null; then
-    echo "    Chaotic-AUR key is already imported and signed. Skipping full setup."
-  else
-    echo "    Chaotic-AUR key not found or not signed. Attempting to import and sign key."
-    sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com || true
-    sudo pacman-key --lsign-key 3056513887B78AEB || true
-  fi
-  # Always sync databases even if already added, to ensure latest package lists
-  sudo pacman -Sy
-  echo "--> Chaotic-AUR setup verified and databases synced."
-else
-  echo "    Chaotic-AUR not found in /etc/pacman.conf. Adding repository..."
-  sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com && \
-  sudo pacman-key --lsign-key 3056513887B78AEB && \
-  sudo pacman -U \
-    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
-    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' && \
-  echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" \
-    | sudo tee -a /etc/pacman.conf || true # Use || true to prevent script from exiting if tee fails (e.g., due to 'database already registered' if it was added by other means)
-  sudo pacman -Sy # Resync after adding Chaotic-AUR
-  echo "--> Chaotic-AUR added and synced."
+  echo "    Removing existing Chaotic-AUR entry from /etc/pacman.conf..."
+  sudo sed -i '/\[chaotic-aur\]/,+1d' /etc/pacman.conf || true
 fi
+
+# Remove chaotic-keyring and chaotic-mirrorlist packages if installed
+echo "    Removing existing chaotic-keyring and chaotic-mirrorlist packages (if any)..."
+sudo pacman -Rns --noconfirm chaotic-keyring chaotic-mirrorlist &>/dev/null || true
+
+# Import key, install packages, and add repository entry
+echo "    Importing Chaotic-AUR key and adding repository..."
+sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com && \
+sudo pacman-key --lsign-key 3056513887B78AEB && \
+sudo pacman -U \
+  'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
+  'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' && \
+echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" \
+  | sudo tee -a /etc/pacman.conf
+
+# Final sync after adding Chaotic-AUR
+sudo pacman -Sy
+echo "--> Chaotic-AUR setup complete and databases synced."
 
 # -----------------------------------------------------------------------------
 # 1) Define your exact desired list of packages
