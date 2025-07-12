@@ -27,16 +27,16 @@ import_pgp_key_robustly() {
     echo "      Trying keyserver: $ks"
     # Redirect stderr to /dev/null for pacman-key to suppress "Problem importing keys"
     if sudo pacman-key --recv-key "$key" --keyserver "$ks" &>/dev/null; then
-      echo "      Key $key imported successfully from $ks."
+      echo "      Key "$key" imported successfully from "$ks"."
       success=true
       break
     else
-      echo "      Failed to import key $key from $ks. Trying next keyserver..."
+      echo "      Failed to import key "$key" from "$ks". Trying next keyserver..."
     fi
   done
 
-  if ! $success; then
-    echo "    Warning: Failed to import PGP key $key from all attempts. This might cause issues during package installation."
+  if ! "$success"; then
+    echo "    Warning: Failed to import PGP key "$key" from all attempts. This might cause issues during package installation."
     return 1 # Indicate failure
   fi
   return 0 # Indicate success
@@ -87,7 +87,7 @@ fi
 # Note: 'xdg-dekstop-portal' has been corrected to 'xdg-desktop-portal'
 pkgs=(
   hyprland
-  hyprlock # Already in list
+  hyprlock
   hyprpicker
   hyprshot
   kitty
@@ -143,12 +143,13 @@ pkgs=(
   gst-libav
   nemo-preview
   gnome-text-editor
-  wlogout # Added wlogout
-  noto-fonts # Added fonts
-  noto-fonts-extra # Added fonts
-  noto-fonts-emoji # Added fonts
-  noto-fonts-cjk # Added fonts
-  nerd-fonts # Added fonts
+  wlogout
+  noto-fonts
+  noto-fonts-extra
+  noto-fonts-emoji
+  noto-fonts-cjk
+  nerd-fonts
+  xdg-user-dirs # Added xdg-user-dirs
 )
 
 echo "--> Analyzing package list: ${pkgs[*]}"
@@ -223,7 +224,7 @@ echo "--> Installing Catppuccin GTK Theme..."
 CATPPUCCIN_GTK_DIR="/tmp/Catppuccin-GTK-Theme"
 # Always remove temporary directory to ensure a fresh clone and install
 if [ -d "$CATPPUCCIN_GTK_DIR" ]; then
-  echo "    Removing existing $CATPPUCCIN_GTK_DIR to ensure clean clone..."
+  echo "    Removing existing "$CATPPUCCIN_GTK_DIR" to ensure clean clone..."
   sudo rm -rf "$CATPPUCCIN_GTK_DIR"
 fi
 git clone https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git "$CATPPUCCIN_GTK_DIR"
@@ -275,6 +276,10 @@ xdg-mime default mpv.desktop application/x-matroska
 echo "    Enabling and starting xdg-desktop-portal --user service..."
 systemctl --user enable --now xdg-desktop-portal
 
+# Update XDG user directories
+echo "    Updating XDG user directories (e.g., Downloads, Documents)..."
+xdg-user-dirs-update
+
 echo "--> Default applications and user services setup complete."
 
 # -----------------------------------------------------------------------------
@@ -287,48 +292,48 @@ CONFIG_DIR="$HOME/.config"
 BACKUP_CONFIG_DIR="$HOME/.config_backup_$(date +%Y%m%d%H%M%S)"
 
 # Ensure the dotfiles repository is cloned/updated first, as both .config and icons depend on it
-echo "--> Cloning/Updating dotfiles repository from $DOTFILES_REPO to $DOTFILES_DIR..."
+echo "--> Cloning/Updating dotfiles repository from "$DOTFILES_REPO" to "$DOTFILES_DIR"..."
 if [ -d "$DOTFILES_DIR" ]; then
-  echo "    $DOTFILES_DIR already exists. Pulling latest changes..."
+  echo "    "$DOTFILES_DIR" already exists. Pulling latest changes..."
   git -C "$DOTFILES_DIR" pull
 else
   git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
 fi
 
 # 7.1) Handle ~/.config directory
-echo "--> Processing $CONFIG_DIR..."
+echo "--> Processing "$CONFIG_DIR"..."
 # Create .config directory if it doesn't exist
 mkdir -p "$CONFIG_DIR"
 
 # Backup existing ~/.config
 if [ -d "$CONFIG_DIR" ] && [ "$(ls -A "$CONFIG_DIR")" ]; then # Check if directory exists and is not empty
-  echo "--> Backing up existing $CONFIG_DIR to $BACKUP_CONFIG_DIR..."
+  echo "--> Backing up existing "$CONFIG_DIR" to "$BACKUP_CONFIG_DIR"..."
   mv "$CONFIG_DIR" "$BACKUP_CONFIG_DIR"
-  echo "    Backup complete. Original config moved to $BACKUP_CONFIG_DIR"
+  echo "    Backup complete. Original config moved to "$BACKUP_CONFIG_DIR""
   mkdir -p "$CONFIG_DIR" # Recreate empty .config after moving
 else
-  echo "--> $CONFIG_DIR is empty or does not exist. No backup needed."
+  echo "--> "$CONFIG_DIR" is empty or does not exist. No backup needed."
   mkdir -p "$CONFIG_DIR" # Ensure it exists if it didn't
 fi
 
 # Copy dotfiles into ~/.config
-echo "--> Copying dotfiles from $DOTFILES_DIR/config/ to $CONFIG_DIR/..."
+echo "--> Copying dotfiles from "$DOTFILES_DIR"/config/ to "$CONFIG_DIR"/..."
 # Ensure source directory exists before copying
 if [ -d "$DOTFILES_DIR/config" ]; then
   cp -r "$DOTFILES_DIR/config/." "$CONFIG_DIR/"
   echo "    Dotfiles copied successfully."
-  echo "    Any previous files in $CONFIG_DIR (before backup) have been replaced."
+  echo "    Any previous files in "$CONFIG_DIR" (before backup) have been replaced."
 else
-  echo "    Warning: Source directory $DOTFILES_DIR/config does not exist. Skipping dotfiles copy."
+  echo "    Warning: Source directory "$DOTFILES_DIR"/config does not exist. Skipping dotfiles copy."
 fi
 
 # -----------------------------------------------------------------------------
 # 7.2) Apply chmod +x to scripts in ~/.config (including hypr/scripts)
-echo "--> Applying executable permissions to scripts and binaries in $CONFIG_DIR/ (e.g., ~/.config/hypr/scripts/)..."
+echo "--> Applying executable permissions to scripts and binaries in "$CONFIG_DIR"/ (e.g., ~/.config/hypr/scripts/)..."
 # Find files that are likely scripts or executables within the .config directory
 # Applying to all files recursively for broad coverage as requested.
 find "$CONFIG_DIR" -type f -exec chmod +x {} + || true
-echo "    Executable permissions applied to files in $CONFIG_DIR/."
+echo "    Executable permissions applied to files in "$CONFIG_DIR"/."
 
 # -----------------------------------------------------------------------------
 # 8) Icon Theme Integration
@@ -343,32 +348,32 @@ mkdir -p "$ICONS_DEST_DIR"
 
 # 8.1) Backup existing ~/.local/share/icons
 if [ -d "$ICONS_DEST_DIR" ] && [ "$(ls -A "$ICONS_DEST_DIR")" ]; then # Check if directory exists and is not empty
-  echo "--> Backing up existing $ICONS_DEST_DIR to $BACKUP_ICONS_DIR..."
+  echo "--> Backing up existing "$ICONS_DEST_DIR" to "$BACKUP_ICONS_DIR"..."
   mv "$ICONS_DEST_DIR" "$BACKUP_ICONS_DIR"
-  echo "    Backup complete. Original icons moved to $BACKUP_ICONS_DIR"
+  echo "    Backup complete. Original icons moved to "$BACKUP_ICONS_DIR""
   mkdir -p "$ICONS_DEST_DIR" # Recreate empty icons dir after moving
 else
-  echo "--> $ICONS_DEST_DIR is empty or does not exist. No backup needed."
+  echo "--> "$ICONS_DEST_DIR" is empty or does not exist. No backup needed."
   mkdir -p "$ICONS_DEST_DIR" # Ensure it exists if it didn't
 fi
 
 # 8.2) Copy icon theme into ~/.local/share/icons
-echo "--> Copying icon theme from $ICONS_SOURCE_DIR to $ICONS_DEST_DIR/..."
+echo "--> Copying icon theme from "$ICONS_SOURCE_DIR" to "$ICONS_DEST_DIR"/..."
 # Ensure source directory exists before copying
 if [ -d "$ICONS_SOURCE_DIR" ]; then
   cp -r "$ICONS_SOURCE_DIR/." "$ICONS_DEST_DIR/"
   echo "    Icon theme copied successfully."
-  echo "    Any previous files in $ICONS_DEST_DIR (before backup) have been replaced."
+  echo "    Any previous files in "$ICONS_DEST_DIR" (before backup) have been replaced."
 else
-  echo "    Warning: Source directory $ICONS_SOURCE_DIR does not exist. Skipping icon theme copy."
+  echo "    Warning: Source directory "$ICONS_SOURCE_DIR" does not exist. Skipping icon theme copy."
 fi
 
 # -----------------------------------------------------------------------------
 # 8.3) Apply chmod +x to scripts in ~/.local/share/icons
-echo "--> Applying executable permissions to files in $ICONS_DEST_DIR/..."
+echo "--> Applying executable permissions to files in "$ICONS_DEST_DIR"/..."
 # For simplicity and broad application as requested, applying to all files recursively.
 find "$ICONS_DEST_DIR" -type f -exec chmod +x {} + || true
-echo "    Executable permissions applied to files in $ICONS_DEST_DIR/."
+echo "    Executable permissions applied to files in "$ICONS_DEST_DIR"/."
 
 echo "--> Icon theme integration complete."
 
@@ -403,14 +408,14 @@ echo "--> SDDM service setup complete."
 
 echo
 echo "✔️ Installation complete!"
-echo "    • Attempted to install: ${pkgs[*]}"
-echo "    • Official Repo packages installed/checked: ${repo_pkgs[*]}"
-echo "    • AUR packages installed/checked:          ${aur_pkgs[*]}"
+echo "    • Attempted to install: "${pkgs[*]}""
+echo "    • Official Repo packages installed/checked: "${repo_pkgs[*]}""
+echo "    • AUR packages installed/checked:          "${aur_pkgs[*]}""
 echo "    • Catppuccin GTK Theme installed."
-echo "    • Your dotfiles from $DOTFILES_REPO have been applied to $HOME/.config"
-echo "      (A backup of your previous ~/.config is available at $BACKUP_CONFIG_DIR)"
-echo "    • Your icon theme from $DOTFILES_REPO has been applied to $HOME/.local/share/icons"
-echo "      (A backup of your previous ~/.local/share/icons is available at $BACKUP_ICONS_DIR)"
+echo "    • Your dotfiles from "$DOTFILES_REPO" have been applied to "$HOME"/.config"
+echo "      (A backup of your previous ~/.config is available at "$BACKUP_CONFIG_DIR")"
+echo "    • Your icon theme from "$DOTFILES_REPO" has been applied to "$HOME"/.local/share/icons"
+echo "      (A backup of your previous ~/.local/share/icons is available at "$BACKUP_ICONS_DIR")"
 if [ "$SDDM_THEME_INSTALLED" = "true" ]; then
   echo "    • SDDM has been installed and the Astronaut theme applied."
 else
