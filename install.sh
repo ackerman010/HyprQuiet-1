@@ -149,8 +149,8 @@ pkgs=(
   noto-fonts-emoji
   noto-fonts-cjk
   nerd-fonts
-  xdg-user-dirs
-  pamixer# Added xdg-user-dirs
+  xdg-user-dirs # Added xdg-user-dirs
+  pamixer
 )
 
 echo "--> Analyzing package list: ${pkgs[*]}"
