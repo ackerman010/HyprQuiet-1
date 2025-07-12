@@ -112,6 +112,22 @@ for pkg in "${pkgs[@]}"; do
 done
 
 # -----------------------------------------------------------------------------
+# 2.1) Handle common package conflicts (e.g., jack2 vs pipewire-jack)
+# This section prompts the user to resolve known conflicts before installation.
+if pacman -Qq jack2 &>/dev/null && [[ " ${pkgs[*]} " =~ " pipewire " ]]; then
+  echo "--> Detected potential conflict: 'jack2' is installed and 'pipewire' (which pulls 'pipewire-jack') is requested."
+  read -rp "    'jack2' and 'pipewire-jack' are conflicting packages. Do you want to remove 'jack2' to proceed with Pipewire? (y/N): " remove_jack2_choice
+  if [[ "$remove_jack2_choice" =~ ^[Yy]$ ]]; then
+    echo "    Removing 'jack2'..."
+    sudo pacman -Rns --noconfirm jack2 || true # Use || true to prevent script from exiting if removal fails
+    echo "    'jack2' removed."
+  else
+    echo "    Skipping 'jack2' removal. Installation of Pipewire components might fail due to this conflict."
+    echo "    You may need to manually resolve this conflict (e.g., 'sudo pacman -Rns jack2') if the installation errors out."
+  fi
+fi
+
+# -----------------------------------------------------------------------------
 # 3) Install official-repo packages (if any)
 if [ ${#repo_pkgs[@]} -gt 0 ]; then
   echo "--> Installing from [extra/community/core/chaotic-aur]: ${repo_pkgs[*]}"
