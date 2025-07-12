@@ -1,0 +1,1 @@
+# HyprQuiet-1
